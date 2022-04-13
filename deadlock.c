@@ -99,7 +99,8 @@ void add_vertex(struct source_type type) {
 
 		tg->list[tg->num].s = type;
 		tg->list[tg->num].next = NULL;
-		tg->num ++;
+		AtomicAdd(&tg->num,1);
+		// tg->num ++;
 
 	}
 
@@ -380,6 +381,12 @@ int search_empty_lock(uint64 lock) {
 
 #endif
 
+
+#define AtomicAdd(a_ptr,a_count) __sync_fetch_and_add (a_ptr, a_count)
+#define AtomicSub(a_ptr,a_count) __sync_fetch_and_sub (a_ptr, a_count)
+
+#if 0
+
 int inc(int *value, int add) {
 
 	int old;
@@ -394,6 +401,7 @@ int inc(int *value, int add) {
 	return old;
 }
 
+#endif
 
 void print_locklist(void) {
 
@@ -423,7 +431,8 @@ void lock_before(uint64 thread_id, uint64 lockaddr) {
 			//创建边的目的顶点
 			struct source_type to;
 			to.id = tg->locklist[idx].id;
-			tg->locklist[idx].degress++;
+			// tg->locklist[idx].degress++;
+			AtomicAdd(&tg->locklist[idx].degress,1);
 			to.type = PROCESS;
 			add_vertex(to);
 			//添加一条有向边（当前线程 指向 占用锁的线程）
@@ -445,8 +454,8 @@ void lock_after(uint64 thread_id, uint64 lockaddr) {
 		
 		tg->locklist[eidx].id = thread_id;
 		tg->locklist[eidx].lock_id = lockaddr;
-		
-		inc(&tg->lockidx, 1);
+		AtomicAdd(&tg->lockidx,1);
+		// inc(&tg->lockidx, 1);
 		
 	} else { //如果这个 锁之前被使用过，并且已经被释放了。但是它依然会存在locklist里面，只要修改一下就好
 
@@ -457,7 +466,8 @@ void lock_after(uint64 thread_id, uint64 lockaddr) {
 
 		struct source_type to;
 		to.id = tg->locklist[idx].id;
-		tg->locklist[idx].degress --;
+		// tg->locklist[idx].degress --;
+		AtomicSub(&tg->locklist[idx].degress,1);
 		to.type = PROCESS;
 
 		if (verify_edge(from, to))
